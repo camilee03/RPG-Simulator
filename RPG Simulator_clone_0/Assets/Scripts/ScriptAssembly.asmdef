@@ -1,0 +1,21 @@
+{
+    "name": "ScriptAssembly",
+    "rootNamespace": "",
+    "references": [
+        "Unity.Services.Core",
+        "Unity.TextMeshPro",
+        "Unity.Netcode.Runtime",
+        "Unity.Multiplayer.Center.NetcodeForGameObjectsExample",
+        "Unity.Multiplayer.Center.NetcodeForEntitiesExample",
+        "Unity.InputSystem"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

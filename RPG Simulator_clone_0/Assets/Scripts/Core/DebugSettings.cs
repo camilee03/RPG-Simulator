@@ -9,6 +9,7 @@ public class DebugSettings : MonoBehaviour
         Vivox,
         Player,
         Video,
+        Whiteboard,
         All
     }
 
@@ -26,7 +27,7 @@ public class DebugSettings : MonoBehaviour
     public bool DoVivox { get; private set; }
 
     [field: SerializeField]
-    public bool EnableInput { get; private set; }
+    public bool OfflineTesting { get; private set; }
 
     public bool ShouldLog(LogLevel level)
     {

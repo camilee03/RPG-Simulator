@@ -31,8 +31,9 @@ public class VivoxManager : MonoBehaviour
     [SerializeField] private int newVolumeMinusPlus50 = 0;
     public TMP_InputField messageField;
 
-
+    [Header("Debug Settings")]
     private readonly DebugSettings.LogLevel logLevel = DebugSettings.LogLevel.Vivox;
+    private bool shouldLog;
 
     private void Awake()
     {
@@ -66,18 +67,20 @@ public class VivoxManager : MonoBehaviour
     /// <returns></returns>
     public async Task Authenticate()
     {
+        shouldLog = DebugSettings.Instance.ShouldLog(logLevel);
+
         // Check if the service is actually registered in the internal registry
-        if (UnityServices.State == ServicesInitializationState.Initialized)
+        if (UnityServices.State == ServicesInitializationState.Initialized && shouldLog)
         {
-            Debug.Log("UGS Initialized. Checking Vivox...");
+            Debug.Log("[VivoxManager] UGS Initialized. Checking Vivox...");
         }
 
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Trying to find instance...");
+        if (shouldLog) Debug.Log("[VivoxManager] Trying to find instance...");
 
         var registry = CoreRegistry.Instance;
         if (registry == null)
         {
-            Debug.LogError("Core Registry is null. Something is very wrong with UGS.");
+            Debug.LogError("[VivoxManager] Core Registry is null. Something is very wrong with UGS.");
         }
         else
         {
@@ -85,12 +88,12 @@ public class VivoxManager : MonoBehaviour
             try
             {
                 var service = CoreRegistry.Instance.GetService<IVivoxService>();
-                Debug.Log($"Registry search result: " +
-                    $"{(service != null ? "Found Vivox" : "Vivox NOT in registry. Check your packages. \n If that fails, try deleting the Library and obj folders")}");
+                if (shouldLog) Debug.Log($"Registry search result: " +
+                    $"{(service != null ? "[VivoxManager] Found Vivox" : "Vivox NOT in registry. Check your packages. \n If that fails, try deleting the Library and obj folders")}");
             }
             catch
             {
-                Debug.Log("Vivox service not even registered.");
+                Debug.Log("[VivoxManager] Vivox service not even registered.");
             }
         }
 
@@ -103,17 +106,16 @@ public class VivoxManager : MonoBehaviour
 
         if (VivoxService.Instance == null)
         {
-            if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Could not find Vivox instance!");
+            if (shouldLog) Debug.Log("[VivoxManager] Could not find Vivox instance!");
             return;
         }
 
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Initializing...");
+        if (shouldLog) Debug.Log("[VivoxManager] Initializing...");
         await VivoxService.Instance.InitializeAsync();
 
         VivoxService.Instance.LoggedIn += OnLoggedIn;
         VivoxService.Instance.LoggedOut += OnLoggedOut;
         messageField.onSubmit.AddListener(SendMessageAsync);
-        VivoxService.Instance.ChannelMessageReceived += OnChannelMessageReceived;
         LobbyManager.Instance.OnJoinedLobby += LobbyManager_OnJoinedLobby;
         LobbyManager.Instance.OnLeftLobby += LobbyManager_OnLeftLobby;
 
@@ -139,11 +141,11 @@ public class VivoxManager : MonoBehaviour
     {
         if (VivoxService.Instance.IsLoggedIn)
         {
-            if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Client" + clientID + " Login successful");
+            if (shouldLog) Debug.Log("[VivoxManager] Client" + clientID + " Login successful");
         }
         else
         {
-            if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Something has gone horribly wrong I am so sorry");
+            if (shouldLog) Debug.Log("[VivoxManager] Something has gone horribly wrong I am so sorry");
         }
     }
     private void OnLoggedOut()
@@ -151,13 +153,13 @@ public class VivoxManager : MonoBehaviour
         isIn3DChannel = false;
         joinedChannel = null;
         VivoxService.Instance.LeaveAllChannelsAsync();
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Left from all Channels.");
+        if (shouldLog) Debug.Log("[VivoxManager] Left from all Channels.");
         VivoxService.Instance.LogoutAsync();
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Logged out of Vivox");
+        if (shouldLog) Debug.Log("[VivoxManager] Logged out of Vivox");
     }
     async void LobbyManager_OnJoinedLobby(object sender, LobbyManager.LobbyEventArgs e)
     {
-        Debug.Log("Joining Vivox Channel for Lobby: " + e.lobby.LobbyCode + e.lobby.Name);
+        if (shouldLog) Debug.Log("[VivoxManager] Joining Vivox Channel for Lobby: " + e.lobby.LobbyCode + e.lobby.Name);
         await JoinGroupChannelAsync(LobbyManager.Instance.GetJoinedLobby().LobbyCode + LobbyManager.Instance.GetJoinedLobby().Name);
     }
     void LobbyManager_OnLeftLobby(object sender, EventArgs e)
@@ -175,13 +177,13 @@ public class VivoxManager : MonoBehaviour
         if (joinedChannel != null)
         {
             await VivoxService.Instance.LeaveChannelAsync(joinedChannel);
-            if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Left " + joinedChannel);
+            if (shouldLog) Debug.Log("Vivox: Left " + joinedChannel);
             joinedChannel = null;
         }
 
         await VivoxService.Instance.JoinEchoChannelAsync(channelName, ChatCapability.TextAndAudio);
         joinedChannel = channelName;
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Successfully joined Echo Channel.");
+        if (shouldLog) Debug.Log("Vivox: Successfully joined Echo Channel.");
     }
 
     public async Task JoinPositionalChannelAsync(string channelName)//proxy chat, should only ever be called once
@@ -191,19 +193,19 @@ public class VivoxManager : MonoBehaviour
         if (joinedChannel != null)
         {
             await VivoxService.Instance.LeaveChannelAsync(joinedChannel);
-            if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Left " + joinedChannel);
+            if (shouldLog) Debug.Log("Vivox: Left " + joinedChannel);
             joinedChannel = null;
         }
 
         await VivoxService.Instance.JoinPositionalChannelAsync(channelName, ChatCapability.AudioOnly, player3DProperties);
         joined3DChannel = channelName;
         isIn3DChannel = true;
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Successfully joined 3D Channel" + channelName + ".");
+        if (shouldLog) Debug.Log("Vivox: Successfully joined 3D Channel" + channelName + ".");
     }
     public async Task JoinGlobalTextChannelAsync(string channelName)//global text chat, should only ever be called once
     {
         await VivoxService.Instance.JoinGroupChannelAsync(channelName, ChatCapability.TextOnly);
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Successfully joined global text Channel" + channelName + ".");
+        if (shouldLog) Debug.Log("Vivox: Successfully joined global text Channel" + channelName + ".");
         joinedChatChannel = channelName;
     }
     public async Task JoinGroupChannelAsync(string channelName)//global chat
@@ -211,12 +213,12 @@ public class VivoxManager : MonoBehaviour
         if (joinedChannel != null && VivoxService.Instance.ActiveChannels.ContainsKey(joinedChannel)) // && VivoxRoom.serverID == null)
         {
             await VivoxService.Instance.LeaveChannelAsync(joinedChannel);
-            if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Left " + joinedChannel);
+            if (shouldLog) Debug.Log("Vivox: Left " + joinedChannel);
         }
 
         joinedChannel = null;
 
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Joining Group Channel: " + channelName);
+        if (shouldLog) Debug.Log("Vivox: Joining Group Channel: " + channelName);
         
         // Make sure the channel name doesn't have any weird characters
         Regex rgx = new("[^a-zA-Z0-9]");
@@ -225,7 +227,7 @@ public class VivoxManager : MonoBehaviour
         await VivoxService.Instance.JoinGroupChannelAsync(channelName, ChatCapability.AudioOnly);
         joinedChannel = channelName;
         //isIn3DChannel = false;
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Successfully joined Group Channel: " + channelName + ".");
+        if (shouldLog) Debug.Log("Vivox: Successfully joined Group Channel: " + channelName + ".");
     }
 
     #endregion
@@ -239,7 +241,7 @@ public class VivoxManager : MonoBehaviour
         if (leavingChannel != null)
         {
             await VivoxService.Instance.LeaveChannelAsync(leavingChannel);
-            if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Left " + leavingChannel);
+            if (shouldLog) Debug.Log("Vivox: Left " + leavingChannel);
         }
     }
     async void LeaveChannelAsync() //leave current channel
@@ -251,7 +253,7 @@ public class VivoxManager : MonoBehaviour
         if (leavingChannel != null)
         {
             await VivoxService.Instance.LeaveChannelAsync(leavingChannel);
-            if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Left " + leavingChannel);
+            if (shouldLog) Debug.Log("Vivox: Left " + leavingChannel);
         }
     }
 
@@ -264,19 +266,81 @@ public class VivoxManager : MonoBehaviour
         await VivoxService.Instance.SetChannelVolumeAsync(deafenedChannel, -50);
         await VivoxService.Instance.SetChannelVolumeAsync(undeafenedChannel, newVolumeMinusPlus50);
         await UnmuteChannelAsync(undeafenedChannel);
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Deafened audio from " + deafenedChannel + ", and undeafened audio from " + undeafenedChannel);
+        if (shouldLog) Debug.Log("Vivox: Deafened audio from " + deafenedChannel + ", and undeafened audio from " + undeafenedChannel);
     }
     public async void DeafenChannelAsync(string deafenedChannel)//mute and turn off audio from specific channel
     {
         await VivoxService.Instance.SetChannelVolumeAsync(deafenedChannel, -50);
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Deafened audio from " + deafenedChannel);
+        if (shouldLog) Debug.Log("[VivoxManager] Deafened audio from " + deafenedChannel);
     }
     public async Task UnmuteChannelAsync(string channel)
     {
         if (!DebugSettings.Instance.DoVivox) return;
         await VivoxService.Instance.SetChannelTransmissionModeAsync(TransmissionMode.Single, channel); // only transmit mic audio to new channel
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: only allowing mic audio to feed into " + channel);
+        if (shouldLog) Debug.Log("[VivoxManager] only allowing mic audio to feed into " + channel);
     }
+
+    public void TogglePlayerMute(string playerID)
+    {
+        if (!DebugSettings.Instance.DoVivox) return;
+
+        VivoxParticipant participant = GetVivoxParticipant(playerID);
+        if (participant != null)
+        {
+            if (participant.IsMuted)
+            {
+                participant.UnmutePlayerLocally();
+                if (shouldLog) Debug.Log("[VivoxManager] Unmuted player " + GetPlayerNameFromID(playerID));
+            }
+            else
+            {
+                participant.MutePlayerLocally();
+                if (shouldLog) Debug.Log("[VivoxManager] Muted player " + GetPlayerNameFromID(playerID));
+            }
+        }
+    }
+
+    public void TogglePlayerDeafen(string playerID)
+    {
+        if (!DebugSettings.Instance.DoVivox) return;
+
+        VivoxParticipant participant = GetVivoxParticipant(playerID);
+        if (participant != null)
+        {
+            if (participant.LocalVolume == 0)
+            {
+                // set the volume back to default
+                participant.SetLocalVolume(100); // NOTE: change to saved volume from participant's side
+                if (shouldLog) Debug.Log("[VivoxManager] Undeafened player " + GetPlayerNameFromID(playerID));
+            }
+            else
+            {
+                participant.SetLocalVolume(0);
+                if (shouldLog) Debug.Log("[VivoxManager] Deafened player " + GetPlayerNameFromID(playerID));
+            }
+        }
+    }
+
+    public double GetPlayerVoiceActivity(string playerID)
+    {
+        if (!DebugSettings.Instance.DoVivox) return 0f;
+
+        VivoxParticipant participant = GetVivoxParticipant(playerID);
+        if (participant != null)
+        {
+            return participant.AudioEnergy;
+        }
+        return 0f;
+    }
+
+    public VivoxParticipant GetVivoxParticipant(string playerID)
+    {
+        if (!DebugSettings.Instance.DoVivox) return null;
+
+        VivoxParticipant participant = VivoxService.Instance.ActiveChannels[joined3DChannel].Where(p => p.PlayerId == playerID).FirstOrDefault();
+        return participant;
+    }
+
     public void UpdateVolume()
     {
         VivoxService.Instance.SetChannelVolumeAsync(joinedChannel, newVolumeMinusPlus50);
@@ -294,14 +358,6 @@ public class VivoxManager : MonoBehaviour
 
 
     #region Chat & UI
-    public void OnChannelMessageReceived(VivoxMessage message)
-    {
-        string messageText = message.MessageText;
-        string senderName = GetPlayerNameFromID(message.SenderPlayerId);
-
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log(senderName + ": " + messageText);
-    }
-
     public async void SendMessageAsync(string message)
     {
         if (string.IsNullOrEmpty(message) || joinedChatChannel == null)
@@ -313,27 +369,77 @@ public class VivoxManager : MonoBehaviour
         messageField.text = string.Empty;
     }
 
-    //this should only be used for text chat Messages and vc UI
     public string GetPlayerNameFromID(string id)
     {
-        if (LobbyManager.Instance == null || LobbyManager.Instance.GetGameLobby() == null)
+        var players = LobbyManager.Instance.GetAllPlayers();
+
+        //Debug.Log("Looking for Player with the id: " + id);
+        if (players != null)
         {
+            foreach (Player player in players)
+            {
+                if (player.Id == id)
+                {
+                    string playerInfoStr = player?.Data != null && player.Data.ContainsKey(LobbyManager.KEY_PLAYER_INFO) ? player.Data[LobbyManager.KEY_PLAYER_INFO].Value : player?.Id;
+                    return playerInfoStr.Split(':')[0];
+                }
+            }
+            if (shouldLog) Debug.Log("Didn't find a corresponding ID.");
             return "Someone";
         }
 
-        //Debug.Log("Looking for Player with the id: " + id);
-        foreach (Player p in LobbyManager.Instance.GetGameLobby().Players)
-        {
-            //Debug.Log("Checking against " + p.Id);
-            if (p.Id == id)
-            {
-                //Debug.Log("ID match!");
-                return p.Data[LobbyManager.KEY_PLAYER_NAME].Value;
-            }
-        }
-        //Debug.Log("Didn't find a corresponding ID.");
+        if (shouldLog) Debug.Log("PlayerList was empty.");
         return "Someone";
     }
+
+    public string GetPlayerNameFromID(ulong id)
+    {
+        var players = LobbyManager.Instance.GetAllPlayers();
+
+        //Debug.Log("Looking for Player with the id: " + id);
+        if (players != null)
+        {
+            foreach (Player player in players)
+            {
+                string playerInfoStr = player?.Data != null && player.Data.ContainsKey(LobbyManager.KEY_PLAYER_INFO) ? player.Data[LobbyManager.KEY_PLAYER_INFO].Value : player?.Id;
+                ulong playerClientID = Convert.ToUInt64(playerInfoStr.Split(':')[2]);
+                Debug.Log(playerClientID);
+                if (playerClientID == id)
+                {
+                    return playerInfoStr.Split(':')[0];
+                }
+            }
+            if (shouldLog) Debug.Log("Couldn't find a corresponding ID");
+            return "Someone";
+        }
+
+        if (shouldLog) Debug.Log("PlayerList was empty.");
+        return "Someone";
+    }
+
+    public string GetPlayerIDfromClientID(ulong clientID)
+    {
+        if (LobbyManager.Instance == null) return "";
+
+        var players = LobbyManager.Instance.GetAllPlayers();
+
+        //Debug.Log("Looking for Player with the id: " + id);
+        if (players != null)
+        {
+            foreach (Player player in players)
+            {
+                string playerInfoStr = player?.Data != null && player.Data.ContainsKey(LobbyManager.KEY_PLAYER_INFO) ? player.Data[LobbyManager.KEY_PLAYER_INFO].Value : player?.Id;
+                if (Convert.ToUInt64(playerInfoStr.Split(':')[2]) == clientID)
+                {
+                    return player.Id;
+                }
+            }
+        }
+
+        if (shouldLog) Debug.Log("Didn't find a corresponding player name or playerList was empty.");
+        return "Someone";
+    }
+
     #endregion
 
     public void UpdatePlayer3DPos()
@@ -350,7 +456,35 @@ public class VivoxManager : MonoBehaviour
         if (_localPlayerHead == null)
         {
             _localPlayerHead = playerHead;
-            if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Successfully attached to PlayerHead");
+            if (shouldLog) Debug.Log("Vivox: Successfully attached to PlayerHead");
+        }
+    }
+
+    /// <summary>
+    /// Send a message that is intended for a single client.
+    /// The message is encoded and sent on the currently joined chat channel. Recipients must parse messages
+    /// with the "/pm:{recipientId}:{message}" prefix to treat them as private.
+    /// </summary>
+    /// <param name="recipientId">Target client/player id.</param>
+    /// <param name="message">Message text to send.</param>
+    public async Task SendMessageToClientAsync(string recipientId, string message)
+    {
+        if (!DebugSettings.Instance.DoVivox) return;
+        if (string.IsNullOrEmpty(recipientId) || string.IsNullOrEmpty(message) || joinedChatChannel == null)
+        {
+            return;
+        }
+
+        // Encode recipient into the payload so other clients can route/display appropriately.
+        string payload = $"/pm:{message}";
+
+        if (shouldLog) Debug.Log($"[VivoxManager] Sending private message to {recipientId}: {message}");
+
+        await VivoxService.Instance.SendDirectTextMessageAsync(recipientId, payload);
+
+        if (messageField != null)
+        {
+            messageField.text = string.Empty;
         }
     }
 }

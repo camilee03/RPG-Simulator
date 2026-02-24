@@ -650,6 +650,7 @@ MonoBehaviour:
   playerList: {fileID: 625155497}
   startButton: {fileID: 1724559088}
   waitText: {fileID: 2001202215}
+  playerName: {fileID: 1341710520}
 --- !u!1 &142191196
 GameObject:
   m_ObjectHideFlags: 0
@@ -5454,8 +5455,8 @@ MonoBehaviour:
   m_OnEndEdit:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 7827965171653005932, guid: f8d59ba25ae9e514d86697faff0a2593, type: 3}
-        m_TargetAssemblyTypeName: SetupPlayer, NetworkingAssembly
+      - m_Target: {fileID: 129520297}
+        m_TargetAssemblyTypeName: LobbyJoiner, NetworkingAssembly
         m_MethodName: ChangeName
         m_Mode: 0
         m_Arguments:
@@ -5483,19 +5484,7 @@ MonoBehaviour:
       m_Calls: []
   m_OnValueChanged:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 7827965171653005932, guid: f8d59ba25ae9e514d86697faff0a2593, type: 3}
-        m_TargetAssemblyTypeName: SetupPlayer, NetworkingAssembly
-        m_MethodName: ChangeName
-        m_Mode: 0
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
   m_OnTouchScreenKeyboardStatusChanged:
     m_PersistentCalls:
       m_Calls: []

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System.Collections;
+using System.Collections.Generic;
 using Unity.Netcode;
 using Unity.Netcode.Components;
 using UnityEngine;
@@ -39,20 +40,32 @@ public class FirstPersonMovement : NetworkBehaviour
     [SerializeField] FirstPersonLook look;
     public NetworkTransform networkTransform { get; private set; }
     NetworkRigidbody networkRigidbody;
+    PlayerInput playerInput;
 
     [Header("Animation Hashes")]
-    private readonly int _isWalkingBool = Animator.StringToHash("isWalking");
+    private readonly int _isWalkingBool = Animator.StringToHash("IsWalking");
     private readonly int _sitTrigger = Animator.StringToHash("Sit");
     private readonly int _standTrigger = Animator.StringToHash("Stand");
 
 
     [Header("Debug")]
     private readonly DebugSettings.LogLevel logLevel = DebugSettings.LogLevel.Player;
+    private bool shouldLog;
 
     void Reset()
     {
         // Try to get groundCheck.
         groundCheck = GetComponentInChildren<GroundCheck>();
+    }
+
+    private void OnEnable()
+    {
+        if (!DebugSettings.Instance.OfflineTesting) NetworkManager.Singleton.OnConnectionEvent += ResetInputSystem;
+    }
+
+    private void OnDisable()
+    {
+        if (!DebugSettings.Instance.OfflineTesting) NetworkManager.Singleton.OnConnectionEvent -= ResetInputSystem;
     }
 
 
@@ -64,8 +77,11 @@ public class FirstPersonMovement : NetworkBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         canMove = true;
 
+        shouldLog = DebugSettings.Instance.ShouldLog(logLevel);
+
+        if (DebugSettings.Instance.OfflineTesting) ResetInputSystem(null, new ConnectionEventData());
+
         SetSpawnLocation();
-        ResetInputSystem();
     }
 
     private void SetSpawnLocation()
@@ -76,20 +92,29 @@ public class FirstPersonMovement : NetworkBehaviour
 
     }
 
-    private void ResetInputSystem()
+    public void ResetInputSystem(NetworkManager manager, ConnectionEventData eventData)
     {
+        if (shouldLog) Debug.Log("Resetting Input System");
+
+        if (playerInput == null) playerInput = GetComponent<PlayerInput>();
+
         // ensure only one input is enabled
         InputSystem.actions.Disable();
-        PlayerInput playerInput = GetComponent<PlayerInput>();
         playerInput.currentActionMap?.Enable();
+
+        if (IsOwner || DebugSettings.Instance.OfflineTesting) playerInput.actions = InputSystem.actions;
 
         playerInput.enabled = false;
 
-        if (IsOwner)
-        {
-            playerInput.actions = InputSystem.actions;
-            playerInput.enabled = true;
-        }
+        if (IsOwner || DebugSettings.Instance.OfflineTesting) StartCoroutine(DelayedResetInputSystem());
+    }
+
+    IEnumerator DelayedResetInputSystem()
+    {
+        yield return new WaitForSeconds(0.5f);
+
+        playerInput.enabled = false;
+        playerInput.enabled = true;
     }
 
     #endregion
@@ -99,21 +124,29 @@ public class FirstPersonMovement : NetworkBehaviour
 
     void FixedUpdate()
     {
-        if (!IsOwner && !DebugSettings.Instance.EnableInput) return;
+        if (!IsOwner && !DebugSettings.Instance.OfflineTesting) return;
 
         // Apply movement.
-        networkRigidbody.Rigidbody.isKinematic = false;
-        networkRigidbody.Rigidbody.linearVelocity = (networkTransform.transform.rotation * new Vector3(targetVelocity.x, networkRigidbody.Rigidbody.linearVelocity.y, targetVelocity.y));
-
-        //GetComponent<Rigidbody>().linearVelocity = (transform.rotation * new Vector3(targetVelocity.x, GetComponent<Rigidbody>().linearVelocity.y, targetVelocity.y));
-        
-        if (targetVelocity.x != 0 || targetVelocity.y != 0) networkAnimator.SetTrigger(_isWalkingBool, true);
-        else networkAnimator.SetTrigger(_isWalkingBool, false);
+        if (DebugSettings.Instance.OfflineTesting)
+        {
+            Rigidbody rgd = GetComponent<Rigidbody>();
+            rgd.isKinematic = false;
+            rgd.linearVelocity = (transform.rotation * new Vector3(targetVelocity.x, rgd.linearVelocity.y, targetVelocity.y));
+        }
+        else
+        {
+            networkRigidbody.Rigidbody.isKinematic = false;
+            networkRigidbody.Rigidbody.linearVelocity = (networkTransform.transform.rotation * new Vector3(targetVelocity.x, networkRigidbody.Rigidbody.linearVelocity.y, targetVelocity.y));
+            
+            // Don't run networkanimator if not online
+            if (targetVelocity.x != 0 || targetVelocity.y != 0) networkAnimator.Animator.SetBool(_isWalkingBool, true);
+            else networkAnimator.Animator.SetBool(_isWalkingBool, false);
+        }
     }
 
     private void OnMove(InputValue value)
     {
-        if (!IsOwner && !DebugSettings.Instance.EnableInput) return;
+        if (!IsOwner && !DebugSettings.Instance.OfflineTesting) return;
 
         if (!Mathf.Approximately(value.Get<Vector2>().magnitude, 0) && canMove)
         {
@@ -127,7 +160,7 @@ public class FirstPersonMovement : NetworkBehaviour
             Vector2 inputVelocity = value.Get<Vector2>();
 
             targetVelocity = new(inputVelocity.x * targetMovingSpeed, inputVelocity.y * targetMovingSpeed);
-            if (DebugSettings.Instance.ShouldLog(logLevel)) { Debug.Log($"[FirstPersonMovement] OnMove InputVector: {inputVelocity}"); }
+            if (shouldLog) { Debug.Log($"[FirstPersonMovement] OnMove InputVector: {inputVelocity}"); }
         }
         else targetVelocity = Vector2.zero;
     }
@@ -146,6 +179,7 @@ public class FirstPersonMovement : NetworkBehaviour
     public void StopMovement()
     {
         targetVelocity = Vector2.zero;
+        networkAnimator.Animator.SetBool(_isWalkingBool, false);
         look.StopMovement();
     }
 
@@ -161,9 +195,9 @@ public class FirstPersonMovement : NetworkBehaviour
 
     void OnJump()
     {
-        if (!IsOwner && !DebugSettings.Instance.EnableInput) return;
+        if (!IsOwner && !DebugSettings.Instance.OfflineTesting) return;
         if (groundCheck && !groundCheck.isGrounded) return;
-        if (DebugSettings.Instance.ShouldLog(logLevel)) { Debug.Log("[Jump] Jumping..."); }
+        if (shouldLog) { Debug.Log("[Jump] Jumping..."); }
         networkRigidbody.Rigidbody.AddForce(100 * jumpStrength * Vector3.up);
         Jumped?.Invoke();
     }
@@ -174,7 +208,7 @@ public class FirstPersonMovement : NetworkBehaviour
 
     public void OnSit(GameObject chair)
     {
-        if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("[OnSit] Sitting...");
+        if (shouldLog) Debug.Log("[OnSit] Sitting...");
 
         isSitting = !isSitting;
 

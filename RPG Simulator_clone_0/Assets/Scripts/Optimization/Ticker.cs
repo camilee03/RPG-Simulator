@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class Ticker : MonoBehaviour
 {
-    public static float tickTimeSlow = 0.5f; // Time interval for each tick in seconds
+    public static float tickTimeSlow = 1f; // Time interval for each tick in seconds
     private float _tickerTimeSlow;
 
     public static float tickTimeFast = 0.2f; // Time interval for each tick in seconds

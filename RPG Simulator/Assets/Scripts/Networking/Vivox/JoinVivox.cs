@@ -1,47 +1,44 @@
-﻿using Unity.Netcode;
+﻿using TMPro;
+using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 public class JoinVivox : NetworkBehaviour
 {
-    public GameObject vivoxHead;
+    [Header("Vivox Setup")]
+    GameObject vivoxHead;
     public static bool init = false;
 
-    // Debug
-    readonly DebugSettings.LogLevel logLevel = DebugSettings.LogLevel.Vivox;
+    [Header("Debug Settings")]
+    private readonly DebugSettings.LogLevel logLevel = DebugSettings.LogLevel.Vivox;
+    private bool shouldLog;
+
+    private void Start()
+    {
+        shouldLog = DebugSettings.Instance.ShouldLog(logLevel); 
+    }
 
     public override async void OnNetworkSpawn()
     {
         if (IsLocalPlayer)
         {
-            Debug.Log("[JoinVivox] Joining...");
+            if (shouldLog) Debug.Log("[JoinVivox] Joining...");
+
+            NetworkManager.Singleton.ConnectedClients.TryGetValue(NetworkManager.Singleton.LocalClientId, out NetworkClient client);
+            vivoxHead = transform.GetChild(0).GetChild(0).GetChild(0).GetChild(2).gameObject;
 
             VivoxManager.Instance.SetPlayerHeadPos(vivoxHead);
-            if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Test Relay Code:  " + TestRelay.Instance.gameCode);
+            if (shouldLog) Debug.Log("[JoinVivox] Test Relay Code:  " + TestRelay.Instance.gameCode);
             await VivoxManager.Instance.JoinPositionalChannelAsync(TestRelay.Instance.gameCode + "Global");
             await VivoxManager.Instance.JoinGlobalTextChannelAsync(TestRelay.Instance.gameCode + "GlobalText");
             await VivoxManager.Instance.UnmuteChannelAsync(TestRelay.Instance.gameCode + "Global");
 
             // activate all network-necessary components. They should be inactive until vivox is completely set up, ideally in a loading screen.
-            if (DebugSettings.Instance.ShouldLog(logLevel)) Debug.Log("Vivox: Initial setup is finished, initializing player controls.");
+            if (shouldLog) Debug.Log("[JoinVivox] Initial setup is finished, initializing player controls.");
             init = true;
             VivoxManager.Instance.SendMessageAsync("joined the game.");
-
-            // Debug test Prefabs
-            foreach (var p in NetworkManager.Singleton.NetworkConfig.Prefabs.Prefabs)
-            {
-                Debug.Log($"{p.Prefab.name} → {p.SourcePrefabGlobalObjectIdHash}");
-            }
         }
     }
 
-    private void Update()
-    {
-        /*
-        if (Input.GetKeyDown(KeyCode.J))
-        {
-            VivoxManager.Instance.JoinEchoChannelAsync("ChannelName");
-        }
-        */
-    }
 }

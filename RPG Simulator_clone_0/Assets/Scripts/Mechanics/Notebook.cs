@@ -1,6 +1,8 @@
 using System.Collections;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 public class Notebook : MonoBehaviour
 {
@@ -14,7 +16,7 @@ public class Notebook : MonoBehaviour
 
     public void SaveContents()
     {
-
+        // save to excel??
     }
 
     public void LoadContents()
@@ -29,11 +31,13 @@ public class Notebook : MonoBehaviour
         pages[currentPage].SetActive(true);
     }
 
-    public void Open()
+    public bool Open()
     {
+        if (isMoving) return false;
+
         isOpen = true;
         
-        if (!isMoving) StartCoroutine(RaiseNotebook());
+        StartCoroutine(RaiseNotebook());
         openButton.SetActive(false);
         closeButton.SetActive(true);
 
@@ -42,13 +46,17 @@ public class Notebook : MonoBehaviour
         {
             pages[currentPage].transform.GetChild(i).gameObject.SetActive(true);
         }
+
+        return true;
     }
 
-    public void Close()
+    public bool Close()
     {
+        if (isMoving) return false;
+
         isOpen = false;
         
-        if (!isMoving) StartCoroutine(LowerNotebook());
+        StartCoroutine(LowerNotebook());
         openButton.SetActive(true);
         closeButton.SetActive(false);
 
@@ -57,6 +65,8 @@ public class Notebook : MonoBehaviour
         {
             pages[currentPage].transform.GetChild(i).gameObject.SetActive(false);
         }
+
+        return true;
     }
 
     IEnumerator RaiseNotebook()

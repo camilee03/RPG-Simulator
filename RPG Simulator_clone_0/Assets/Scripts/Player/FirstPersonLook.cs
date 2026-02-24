@@ -1,4 +1,5 @@
-﻿using Unity.Netcode;
+﻿using Unity.Cinemachine;
+using Unity.Netcode;
 using Unity.Netcode.Components;
 using UnityEngine;
 
@@ -27,20 +28,20 @@ public class FirstPersonLook : NetworkBehaviour
 
         // Disable unessential components
         AudioListener listener = GetComponent<AudioListener>();
-        Camera camera = GetComponent<Camera>();
-        if (IsOwner || DebugSettings.Instance.EnableInput)
+        CinemachineCamera camera = GetComponent<CinemachineCamera>();
+        if (IsOwner || DebugSettings.Instance.OfflineTesting)
         {
             this.tag = "MainCamera";
-            camera.depth = 1;
+            camera.Priority = 1;
             listener.enabled = true;
             canMove = true;
         }
-        else { camera.depth = -1; listener.enabled = false; }
+        else { camera.Priority = -1; listener.enabled = false; }
     }
 
     void Update()
     {
-        if (!IsOwner && !DebugSettings.Instance.EnableInput) return;
+        if (!IsOwner && !DebugSettings.Instance.OfflineTesting) return;
 
 
         if (canMove)
@@ -55,13 +56,15 @@ public class FirstPersonLook : NetworkBehaviour
             if (headOnly)
             {
                 // only rotate head
-                networkTransform.transform.localRotation = Quaternion.AngleAxis(-velocity.y, Vector3.right);
-                head.transform.localRotation = Quaternion.AngleAxis(velocity.x, Vector3.up);
+                Quaternion lrRotation = Quaternion.AngleAxis(velocity.x, Vector3.up);
+                Quaternion udRotation = Quaternion.AngleAxis(-velocity.y - 180, Vector3.right);
+                head.transform.localRotation = udRotation * lrRotation;
             }
             else
             {
-                // Rotate camera up-down and controller left-right from velocity.
-                networkTransform.transform.localRotation = Quaternion.AngleAxis(-velocity.y, Vector3.right);
+                // Rotate head (and therefore camera) up-down and controller left-right from velocity.
+                //networkTransform.transform.localRotation = Quaternion.AngleAxis(-velocity.y, Vector3.right);
+                head.transform.localRotation = Quaternion.AngleAxis(-velocity.y-180, Vector3.right);
                 character.transform.localRotation = Quaternion.AngleAxis(velocity.x, Vector3.up);
             }
         }
@@ -70,7 +73,6 @@ public class FirstPersonLook : NetworkBehaviour
     public void StopMovement()
     {
         frameVelocity = Vector2.zero;
-        velocity = Vector2.zero;
         canMove = false;
     }
 

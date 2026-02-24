@@ -7,7 +7,10 @@
         "Unity.Netcode.Runtime",
         "Unity.Multiplayer.Center.NetcodeForGameObjectsExample",
         "Unity.Multiplayer.Center.NetcodeForEntitiesExample",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.WebRTC",
+        "Unity.Cinemachine",
+        "GstuSpreadSheet"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

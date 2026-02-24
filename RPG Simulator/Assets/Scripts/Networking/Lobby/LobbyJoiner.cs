@@ -18,6 +18,7 @@ public class LobbyJoiner : MonoBehaviour
     [SerializeField] TMP_Text playerList;
     [SerializeField] Button startButton;
     [SerializeField] TMP_Text waitText;
+    [SerializeField] TMP_Text playerName;
 
 
     private void Awake()
@@ -57,15 +58,32 @@ public class LobbyJoiner : MonoBehaviour
 
         Lobby lobby = LobbyManager.Instance.GetJoinedLobby();
         if (lobby == null) return;
+
         lobbyName.text = "Lobby: " + lobby.Name;
+
+        // Update player names
+        playerName.text = LobbyManager.Instance.GetPlayerName();
+
         string players = "";
         foreach (var player in lobby.Players)
         {
-            string displayName = player?.Data != null && player.Data.ContainsKey(LobbyManager.KEY_PLAYER_NAME) ? player.Data[LobbyManager.KEY_PLAYER_NAME].Value : player?.Id;
+            string playerInfoStr = player?.Data != null && player.Data.ContainsKey(LobbyManager.KEY_PLAYER_INFO) ? player.Data[LobbyManager.KEY_PLAYER_INFO].Value : player?.Id;
+            string displayName = playerInfoStr.Split(':')[0];
             players += $"{displayName}, ";
         }
 
         playerList.text = $"Players ({lobby.Players.Count}/{lobby.MaxPlayers}):\n {players}";
+        UpdateName();
+    }
+
+    public void ChangeName(string newName)
+    {
+        LobbyManager.Instance.ChangeName(newName);
+    }
+
+    private void UpdateName()
+    {
+       playerName.text = LobbyManager.Instance.GetPlayerName();
     }
 
     public void StartGame()

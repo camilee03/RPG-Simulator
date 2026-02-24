@@ -2,6 +2,7 @@ using System.Collections;
 using TMPro;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class ViewTriggers : NetworkBehaviour
@@ -24,7 +25,7 @@ public class ViewTriggers : NetworkBehaviour
 
     private void ViewTicker()
     {
-        if (!IsOwner && !DebugSettings.Instance.EnableInput) return;
+        if (!IsOwner && !DebugSettings.Instance.OfflineTesting) return;
 
         if (playerInputManager.currentAction != ActionType.None) { keepUI = false; return; }
 
@@ -47,19 +48,30 @@ public class ViewTriggers : NetworkBehaviour
             playerInputManager.currentObject = lastHit.gameObject;
             if (hit.transform.CompareTag("SitPoint")) ReadySitProtocol();
             else if (hit.transform.CompareTag("Player")) ReadyPlayerProtocol();
-            else { 
+            else if (hit.transform.CompareTag("Whiteboard")) ReadyWhiteboardProtocol();
+            else
+            {
                 keepUI = false;
                 playerInputManager.readyAction = ActionType.None;
                 playerInputManager.currentObject = null;
             }
         }
+        else keepUI = false;
     }
 
 
     void ReadySitProtocol()
     {
-        StartCoroutine(FadeInUI("Press Q to Sit"));
+        InputAction inputAction = InputSystem.actions["Action"];
+        StartCoroutine(FadeInUI($"Press {inputAction.GetBindingDisplayString(0)} to Sit"));
         playerInputManager.readyAction = ActionType.Sit;
+    }
+
+    void ReadyWhiteboardProtocol()
+    {
+        InputAction inputAction = InputSystem.actions["Action"];
+        StartCoroutine(FadeInUI($"Press {inputAction.GetBindingDisplayString(0)} to Draw"));
+        playerInputManager.readyAction = ActionType.Draw;
     }
 
     void ReadyPlayerProtocol()

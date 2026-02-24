@@ -1,19 +1,31 @@
 using System.Collections;
+using System.Threading;
+using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
-using System.Threading.Tasks;
-using System.Threading;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 public class DiceRoller : MonoBehaviour
 {
     [SerializeField] TMP_Text diceNum;
     [SerializeField] GameObject dice;
     [SerializeField] new ParticleSystem particleSystem;
+    [SerializeField] PlayerInputManager playerInputManager;
 
     int finalNumber;
     int index = 1;
 
     public bool isVisible { get; private set; }
+
+
+    private void Update()
+    {
+        if (isVisible && Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
+        {
+            playerInputManager.OnEscape();
+        }
+    }
 
     public void RollDice()
     {
@@ -47,7 +59,7 @@ public class DiceRoller : MonoBehaviour
 
         await Task.Run(() =>
         {
-            Thread.Sleep((int)(y*750));
+            Thread.Sleep((int)(y*500));
         });
 
     }

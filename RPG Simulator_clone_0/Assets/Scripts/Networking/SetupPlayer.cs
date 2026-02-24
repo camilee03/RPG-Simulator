@@ -3,16 +3,19 @@ using UnityEngine;
 public class SetupPlayer : MonoBehaviour
 {
     public string playerName { get; private set; }
-    FirstPersonMovement playerController;
+
+    private readonly DebugSettings.LogLevel logLevel = DebugSettings.LogLevel.Networking;
+    private bool shouldLog;
 
     private async void Start()
     {
-        Debug.Log("[SetupPlayer] Setting up...");
+        shouldLog = DebugSettings.Instance.ShouldLog(logLevel);
+        if (shouldLog) Debug.Log("[SetupPlayer] Setting up...");
 
         playerName = "Player";
         GetSavedName();
-        await LobbyManager.Instance.Authenticate(playerName);
 
+        await LobbyManager.Instance.Authenticate(playerName);
     }
 
     private void GetSavedName()
@@ -23,19 +26,8 @@ public class SetupPlayer : MonoBehaviour
         }
     }
 
-    public void SaveName()
-    {
-        PlayerPrefs.SetString("PlayerName", playerName);
-    }
-
-    public void ChangeName(string newName)
-    {
-        playerName = newName;
-        SaveName();
-    }
-
     public void OnDestroy()
     {
-        LobbyManager.Instance.LeaveLobby();
+        if (LobbyManager.Instance != null) LobbyManager.Instance.LeaveLobby();
     }
 }

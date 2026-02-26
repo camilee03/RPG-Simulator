@@ -6,12 +6,24 @@ jobs:
   build:
     name: Build for Windows
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: RPG-Simulator
     steps:
       # 1. Check out your code
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # 2. Build the game using GameCI
+      # 2. Cache previous build artifacts to speed up build
+      - name: Cache Build Artifacts
+        uses: actions/cache@v3
+        with:
+          path: Builds  # Path relative to working directory (RPG-Simulator/Builds)
+          key: ${{ runner.os }}-unity-build-${{ hashFiles('**/Assets/**', '**/ProjectSettings/**') }}
+          restore-keys: |
+            ${{ runner.os }}-unity-build-
+
+      # 3. Build the game using GameCI
       - name: Build Unity Project
         uses: game-ci/unity-builder@v4
         env:
@@ -21,7 +33,7 @@ jobs:
         with:
           targetPlatform: StandaloneWindows64
 
-      # 3. Save the result so you can download it
+      # 4. Save the result so you can download it
       - name: Upload Build
         uses: actions/upload-artifact@v4
         with:

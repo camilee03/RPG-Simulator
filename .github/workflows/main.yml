@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: RPG-Simulator
+        working-directory: RPG Simulator
     steps:
       # 1. Check out your code
       - name: Checkout Code

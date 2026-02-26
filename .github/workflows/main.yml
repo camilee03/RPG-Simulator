@@ -39,4 +39,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Windows-Build
-          path: build/StandaloneWindows64
+          path: Builds/DefaultBuilds

@@ -17,7 +17,7 @@ jobs:
       # 2. Cache previous build artifacts to speed up the build
       - uses: actions/cache@v3
         with:
-          path: Builds
+          path: Builds/DefaultBuilds
           key: Library-RPG-Simulator-Windows
           restore-keys: |
             Library-RPG-Simulator-

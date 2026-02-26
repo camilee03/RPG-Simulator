@@ -28,8 +28,8 @@ jobs:
         uses: game-ci/unity-builder@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
-          # UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }} # Optional: Add this secret if using Personal License
-          # UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }} # Optional: Add this secret if using Personal License
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }} # Optional: Add this secret if using Personal License
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }} # Optional: Add this secret if using Personal License
         with:
           targetPlatform: StandaloneWindows64
           projectPath: ./RPG Simulator

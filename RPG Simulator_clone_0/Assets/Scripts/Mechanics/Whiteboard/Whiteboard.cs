@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using Unity.Cinemachine;
 using Unity.Netcode;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 public class Whiteboard : NetworkBehaviour
@@ -56,11 +58,12 @@ public class Whiteboard : NetworkBehaviour
     {
         if (!isActive) return;
 
-        if (Input.GetMouseButtonDown(0)) StartDraw();
-        if (Input.GetMouseButtonUp(0)) StopDraw();
+        if (Mouse.current.leftButton.wasPressedThisFrame) StartDraw();
+        if (Mouse.current.leftButton.wasReleasedThisFrame) StopDraw();
 
         if (IsStillDrawing()) ContinueDraw();
     }
+
 
     private void StartDraw()
     {
@@ -174,7 +177,7 @@ public class Whiteboard : NetworkBehaviour
         switch (currentTool)
         {
             case Tool.Pen:
-                Vector3 zMousePosition = Input.mousePosition;
+                Vector3 zMousePosition = Mouse.current.position.value;
                 zMousePosition.z = 4f;
                 Vector2 mousePos = Camera.main.ScreenToWorldPoint(zMousePosition);
 
@@ -195,7 +198,7 @@ public class Whiteboard : NetworkBehaviour
 
     private bool IsStillDrawing()
     {
-        return Input.GetMouseButton(0) && activeLine != null;
+        return Mouse.current.leftButton.isPressed && activeLine != null;
     }
 
     private void StopDraw()

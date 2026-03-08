@@ -1,4 +1,3 @@
-using GoogleSheetsToUnity;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
@@ -54,6 +53,7 @@ public class DNDstats : ScriptableObject
             "chaBase", "chaMod", "persuasionMod", "deceptionMod", "performanceMod" };
 
 
+    /*
     internal void UpdateStats(GstuSpreadSheet ss)
     {
         Dictionary<string, int> kvp = new();
@@ -63,7 +63,7 @@ public class DNDstats : ScriptableObject
         attack = int.Parse(ss[name, "Attack"].value);
         defence = int.Parse(ss[name, "Defence"].value);
         items.Add(ss[name, "Items"].value.ToString());
-        */
+       
 
         StatArgs stats = new()
         {
@@ -73,4 +73,5 @@ public class DNDstats : ScriptableObject
 
         UpdateUI?.Invoke(this, stats);
     }
+*/
 }

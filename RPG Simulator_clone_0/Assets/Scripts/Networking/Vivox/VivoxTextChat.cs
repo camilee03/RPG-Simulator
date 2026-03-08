@@ -7,8 +7,8 @@ using Unity.Services.Lobbies.Models;
 using Unity.Services.Vivox;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
-using UnityEngine.UIElements;
 
 public class VivoxTextChat : NetworkBehaviour
 {
@@ -24,7 +24,7 @@ public class VivoxTextChat : NetworkBehaviour
     [SerializeField] private PlayerInputManager playerInputManager;
 
     private string clientID;
-    private List<string> clientIDs = new();
+    private PlayerInfo[] playerInfos;
 
     [Header("Debug Settings")]
     private readonly DebugSettings.LogLevel logLevel = DebugSettings.LogLevel.Vivox;
@@ -36,62 +36,119 @@ public class VivoxTextChat : NetworkBehaviour
 
         clientID = AuthenticationService.Instance.PlayerId;
         VivoxService.Instance.ChannelMessageReceived += OnChannelMessageReceived;
+        VivoxService.Instance.DirectedMessageReceived += OnDirectMessageReceived;
         NetworkManager.Singleton.OnConnectionEvent += ChangeClientList;
     }
 
     private void OnDisable()
     {
         VivoxService.Instance.ChannelMessageReceived -= OnChannelMessageReceived;
+        VivoxService.Instance.DirectedMessageReceived -= OnDirectMessageReceived;
         if (NetworkManager.Singleton != null) NetworkManager.Singleton.OnConnectionEvent -= ChangeClientList;
     }
 
     private void Update()
     {
-        if (playerInputManager.chatOpen && Input.GetMouseButtonDown(0) && !EventSystem.current.IsPointerOverGameObject())
+        if (playerInputManager.chatOpen && Mouse.current.leftButton.isPressed && !EventSystem.current.IsPointerOverGameObject())
         {
             playerInputManager.OnEscape();
         }
     }
 
+    public void OnDirectMessageReceived(VivoxMessage message)
+    {
+        if (message == null) return;
+        if (string.IsNullOrEmpty(message.MessageText)) return;
+
+        const string connectedSuffix = "joined the game.";
+        if (message.MessageText.EndsWith(connectedSuffix, StringComparison.Ordinal))
+        {
+            ChangeClientList(NetworkManager.Singleton, default);
+        }
+
+        string messageText = message.MessageText?.Trim();
+        string senderId = message.SenderPlayerId;
+        string senderName = VivoxManager.Instance.GetPlayerNameFromID(senderId);
+
+        if (senderId == clientID) return; // We don't want to double send the same message
+
+        // Prefixes
+        const string secretPrefix = "/secret~";
+
+        // -- Secret PM: "/secret~{"sender"}~{message}"
+        if (messageText.StartsWith(secretPrefix, StringComparison.Ordinal))
+        {
+            LogSecretPrivateMessage(messageText); return;
+        }
+
+        LogPrivateMessage(messageText, senderName); return;
+    }
+
     public void OnChannelMessageReceived(VivoxMessage message)
     {
         if (message == null) return;
+        if (string.IsNullOrEmpty(message.MessageText)) return;
+
+        const string connectedSuffix = "joined the game.";
+        if (message.MessageText.EndsWith(connectedSuffix, StringComparison.Ordinal))
+        {
+            ChangeClientList(NetworkManager.Singleton, default);
+        }
 
         string messageText = message.MessageText?.Trim();
-        string senderId = message.SenderPlayerId ?? string.Empty;
+        string senderId = message.SenderPlayerId;
         string senderName = VivoxManager.Instance.GetPlayerNameFromID(senderId);
 
-        if (string.IsNullOrEmpty(messageText)) return;
         if (senderId == clientID) return; // We don't want to double send the same message
 
-        // Private message format: "/pm:{message}"
-        const string pmPrefix = "/pm:";
+        // Prefixes
+        const string oraclePrefix = "/o~";
 
-        if (messageText.StartsWith(pmPrefix, StringComparison.Ordinal))
+        // -- Private oracle message: "/o~{message}" - only send to DM
+        if (messageText.StartsWith(oraclePrefix, StringComparison.Ordinal))
         {
-            // Split into 2 parts max: prefix, rest of message
-            string[] parts = messageText.Split(new[] { ':' }, 2);
-            if (parts.Length < 2) return; // Invalid PM format, ignore
-
-            string pmBody = parts[1];
-
-            AddMessageToHistory(SendMode.Whisper, senderName, pmBody);
-
-            if (shouldLog)
-            {
-                Debug.Log($"[PM] {senderName} -> You: {pmBody}");
-            }
-
-            // If not intended for this client, do not log
+            if (LobbyManager.Instance.GetPlayerInfo().playerType == PlayerType.DM)
+                LogOracleMessage(messageText, senderName); 
             return;
         }
 
-        // Otherwise it's a channel message (not a PM) — log it.
-        AddMessageToHistory(SendMode.Channel, senderName, messageText);
-        if (shouldLog)
-        {
-            Debug.Log($"[Channel] {senderName}: {messageText}");
+        else {
+            // -- Channel message — log to everyone
+            AddMessageToHistory(SendMode.Channel, senderName, messageText);
+            if (shouldLog) Debug.Log($"[Channel] {senderName}: {messageText}");
         }
+    }
+
+    private void LogOracleMessage(string messageText, string senderName)
+    {
+        if (shouldLog) Debug.Log($"[Oracle] {senderName}: {messageText}");
+
+        // Split into 2 parts max: prefix, rest of message
+        string[] parts = messageText.Split(new[] { '~' }, 2);
+        if (parts.Length < 2) return; // Invalid PM format, ignore
+        string pmBody = "O: " + parts[1];
+
+        AddMessageToHistory(SendMode.Whisper, senderName, pmBody);
+    }
+
+    private void LogPrivateMessage(string messageText, string senderName)
+    {
+        AddMessageToHistory(SendMode.Whisper, senderName, "[PM]" + messageText);
+
+        if (shouldLog) Debug.Log($"[PM] {senderName} -> You: {messageText}");
+    }
+
+    private void LogSecretPrivateMessage(string messageText)
+    {
+        // Split into 3 parts max: prefix, secretSender, rest of message
+        string[] parts = messageText.Split(new[] { '~' }, 3);
+        if (parts.Length < 3) return; // Invalid PM format, ignore
+        string secretSender = parts[1];
+        string pmBody = parts[2];
+
+        AddMessageToHistory(SendMode.Whisper, secretSender, pmBody);
+
+        if (shouldLog) Debug.Log($"[SECRET PM] {secretSender} -> You: {pmBody}");
     }
 
     public async void SendTextMessage(string message)
@@ -99,16 +156,24 @@ public class VivoxTextChat : NetworkBehaviour
         string messageText = message.Trim();
         if (string.IsNullOrEmpty(messageText)) return;
 
+        // Don't show in messages if this is an oracle question
+        const string oraclePrefix = "/o~";
+        if (message.StartsWith(oraclePrefix, StringComparison.Ordinal))
+        {
+            VivoxManager.Instance.SendMessageAsync(message); return;
+        }
+
+        // Otherwise, show in messages and send
         if (receiverDropdown.value == 0)
         {
             VivoxManager.Instance.SendMessageAsync(messageText);
-            AddMessageToHistory(SendMode.Channel, "You", messageText);
+            AddMessageToHistory(SendMode.Channel, "You -> ALL", messageText);
         }
         else
         {
-            string id = clientIDs[receiverDropdown.value-1];
+            string id = playerInfos[receiverDropdown.value-1].playerID;
             await VivoxManager.Instance.SendMessageToClientAsync(id, messageText);
-            AddMessageToHistory(SendMode.Whisper, "You", messageText);
+            AddMessageToHistory(SendMode.Whisper, $"You -> {playerInfos[receiverDropdown.value-1].playerName}", messageText);
         }
         messageInput.text = "";
     }
@@ -124,7 +189,7 @@ public class VivoxTextChat : NetworkBehaviour
                 msgText += $"<color=\"black\">{sender}: {message}";
                 break;
             case SendMode.Whisper:
-                msgText += $"<color=\"red\">{sender}: {message}";
+                msgText += $"<color=\"green\">{sender}: {message}";
                 break;
         }
 
@@ -137,8 +202,11 @@ public class VivoxTextChat : NetworkBehaviour
 
     private void ChangeClientList(NetworkManager manager, ConnectionEventData data)
     {
-        Player[] players = LobbyManager.Instance.GetAllPlayers();
-        clientIDs = new();
+        if (clientID == null) clientID = AuthenticationService.Instance.PlayerId;
+
+        playerInfos = LobbyManager.Instance.GetAllPlayerInfo();
+        if (playerInfos == null) return;
+        
         receiverDropdown.options = new();
         TMP_Dropdown.OptionData optionData = new()
         {
@@ -146,21 +214,20 @@ public class VivoxTextChat : NetworkBehaviour
         };
         receiverDropdown.options.Add(optionData);
 
-        foreach (Player player in players)
+        foreach (PlayerInfo info in playerInfos)
         {
-            if (player.Id == clientID) return;
-
-            string playerInfoStr = player?.Data != null && player.Data.ContainsKey(LobbyManager.KEY_PLAYER_INFO) ? player.Data[LobbyManager.KEY_PLAYER_INFO].Value : player?.Id;
+            if (info == null) continue;
+            if (info.playerID == clientID) continue; // Don't add self to receiver list
             optionData = new()
             {
-                text = playerInfoStr.Split(':')[0],
+                text = info.playerName,
             };
-            //receiverDropdown.options.Add(optionData);
-            //clientIDs.Add(player.Id);
+            receiverDropdown.options.Add(optionData);
 
-            if (shouldLog) Debug.Log($"Adding Player {playerInfoStr.Split(':')[0]} to list");
+            if (shouldLog) Debug.Log($"Adding Player {info.playerName} to list");
         }
 
+        receiverDropdown.value = 1;
         receiverDropdown.value = 0;
     }
 }

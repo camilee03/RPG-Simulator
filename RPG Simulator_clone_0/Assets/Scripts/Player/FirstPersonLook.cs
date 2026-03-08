@@ -2,12 +2,14 @@
 using Unity.Netcode;
 using Unity.Netcode.Components;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.UIElements;
 
 public class FirstPersonLook : NetworkBehaviour
 {
     [SerializeField] NetworkTransform character;
     [SerializeField] NetworkTransform head;
-    public float sensitivity = 2;
+    public float sensitivity = 1;
     public float smoothing = 1.5f;
 
     Vector2 velocity;
@@ -47,8 +49,7 @@ public class FirstPersonLook : NetworkBehaviour
         if (canMove)
         {
             // Get smooth velocity.
-            Vector2 mouseDelta = new(Input.GetAxisRaw("Mouse X"), Input.GetAxisRaw("Mouse Y"));
-            Vector2 rawFrameVelocity = Vector2.Scale(mouseDelta, Vector2.one * sensitivity);
+            Vector2 rawFrameVelocity = Vector2.Scale(Mouse.current.delta.value, Vector2.one * sensitivity);
             frameVelocity = Vector2.Lerp(frameVelocity, rawFrameVelocity, 1 / smoothing);
             velocity += frameVelocity;
             velocity.y = Mathf.Clamp(velocity.y, -90, 90);

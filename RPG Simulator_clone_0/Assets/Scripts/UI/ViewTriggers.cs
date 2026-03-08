@@ -87,6 +87,7 @@ public class ViewTriggers : NetworkBehaviour
         float segment = 0.01f;
 
         // Fade in
+        promptText.gameObject.SetActive(true);
         promptText.text = text;
         Color initialColor = promptText.color;
 
@@ -112,5 +113,6 @@ public class ViewTriggers : NetworkBehaviour
         promptText.color = initialColor;
 
         hasUI = false;
+        promptText.gameObject.SetActive(false);
     }
 }

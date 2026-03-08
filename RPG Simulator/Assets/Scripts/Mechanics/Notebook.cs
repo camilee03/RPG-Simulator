@@ -1,8 +1,10 @@
 using System.Collections;
+using TMPro;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.UI;
 
 public class Notebook : MonoBehaviour
 {
@@ -13,6 +15,13 @@ public class Notebook : MonoBehaviour
     int currentPage = 0;
     bool isMoving = false;
     public bool isOpen = false;
+
+    [Header("Character Sheet")]
+    [SerializeField] Image cs1;
+    [SerializeField] Image cs2;
+    [SerializeField] TMP_Text healthText;
+    int health = 20;
+    int maxHealth = 100;
 
     public void SaveContents()
     {
@@ -92,4 +101,19 @@ public class Notebook : MonoBehaviour
         Cursor.lockState = CursorLockMode.Locked;
         isMoving = false;
     }
+
+    public async void ChangeCS(int num)
+    {
+        Sprite sprite = await FileBrowserUpdate.Instance.GetSpriteFromImageFileBrowser();
+
+        if (sprite == null) return;
+
+        if (num == 1) cs1.sprite = sprite;
+        else cs2.sprite = sprite;
+    }
+
+
+    public void IncreaseHealth() { if (health < maxHealth) health++; SetText(); }
+    public void DecreaseHealth() { if (health > 0) health--; SetText(); }
+    private void SetText() { healthText.text = $"{health} HP"; }
 }

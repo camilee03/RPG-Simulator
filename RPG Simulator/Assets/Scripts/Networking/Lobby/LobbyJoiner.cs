@@ -19,6 +19,7 @@ public class LobbyJoiner : MonoBehaviour
     [SerializeField] Button startButton;
     [SerializeField] TMP_Text waitText;
     [SerializeField] TMP_Text playerName;
+    [SerializeField] ColorPicker colorPicker;
 
 
     private void Awake()
@@ -84,6 +85,34 @@ public class LobbyJoiner : MonoBehaviour
     private void UpdateName()
     {
        playerName.text = LobbyManager.Instance.GetPlayerName();
+    }
+    public void OpenColorPicker()
+    {
+        colorPicker.gameObject.SetActive(true);
+    }
+
+    public void SaveColor()
+    {
+        LobbyManager.Instance.ChangeColor(colorPicker.GetColor());
+
+        CloseColorPicker();
+    }
+
+    public void CloseColorPicker()
+    {
+        colorPicker.gameObject.SetActive(false);
+    }
+
+    public void ChangePlayerType(int type)
+    {
+        switch (type) {
+            case 0:
+                LobbyManager.Instance.ChangePlayerType(PlayerType.Player);
+                break;
+            case 1:
+                LobbyManager.Instance.ChangePlayerType(PlayerType.DM);
+                break;
+        }
     }
 
     public void StartGame()

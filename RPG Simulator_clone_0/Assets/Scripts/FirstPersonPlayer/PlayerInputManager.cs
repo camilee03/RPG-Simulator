@@ -1,8 +1,8 @@
-using TinyJSON;
 using Unity.Cinemachine;
 using Unity.Netcode;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 
 /// <summary>
@@ -33,6 +33,7 @@ public class PlayerInputManager : NetworkBehaviour
     public ActionType readyAction;
     public ActionType currentAction { get; private set; }
     public GameObject currentObject { private get; set; }
+    private Whiteboard currentWhiteboard;
     
 
     private void Start()
@@ -40,8 +41,9 @@ public class PlayerInputManager : NetworkBehaviour
         roller = GetComponentInChildren<DiceRoller>();
     }
 
+    #region Inputs with Input Text Box
 
-    void OnNotebook()
+    private void OnNotebook()
     {
         if (CheckOtherUI()) return;
 
@@ -74,6 +76,16 @@ public class PlayerInputManager : NetworkBehaviour
         roller.RollDice();
     }
 
+    void OnOracle()
+    {
+        if (CheckOtherUI()) return;
+        roller.OracleRoll();
+        SetPlayerMovement(false);
+        Cursor.lockState = CursorLockMode.None;
+    }
+
+    #endregion
+
     void OnSettings()
     {
         if (CheckOtherUI()) return;
@@ -92,27 +104,24 @@ public class PlayerInputManager : NetworkBehaviour
         }
     }
 
-
-    private void SetPlayerMovement(bool isOn)
-    {
-        if (!isOn) playerController.StopMovement();
-        else playerController.ResumeMovement();
-
-        cameraController.enabled = isOn;
-        playerController.enabled = isOn;
-    }
-
+    #region Action Inputs
     public void OnEscape()
     {
         if (notebook.isOpen)
         {
             if (notebook.Close()) SetPlayerMovement(true);
         }
-        if (roller.isVisible)
+        else if (roller.isVisible)
         {
             roller.Exit();
         }
-        if (chatOpen)
+        else if (roller.isOracleVisible)
+        {
+            roller.ExitOracle();
+            Cursor.lockState = CursorLockMode.Locked;
+            SetPlayerMovement(true);
+        }
+        else if (chatOpen)
         {
             playerController.ResumeMovement();
             Cursor.lockState = CursorLockMode.Locked;
@@ -122,6 +131,8 @@ public class PlayerInputManager : NetworkBehaviour
 
             chatOpen = false;
         }
+        // Only stop action if not doing anything else
+        else StopAction();
     }
 
     private void StopAction()
@@ -134,12 +145,13 @@ public class PlayerInputManager : NetworkBehaviour
                 currentAction = ActionType.None;
                 break;
             case ActionType.Draw:
-                if (currentObject.GetComponent<Whiteboard>().StopDrawing(defaultCamera))
+                if (currentWhiteboard.StopDrawing(defaultCamera))
                 {
                     SetPlayerMovement(true);
                     standardUI.SetActive(true);
                     drawingUI.SetActive(false);
                     currentAction = ActionType.None;
+                    currentWhiteboard = null;
                 }
                 break;
             default: currentAction = ActionType.None; break;
@@ -164,13 +176,13 @@ public class PlayerInputManager : NetworkBehaviour
                     currentAction = readyAction;
                     break;
                 case ActionType.Draw:
-                    Whiteboard whiteboard = currentObject.GetComponent<Whiteboard>();
-                    if (whiteboard.StartDrawing(defaultCamera))
+                    currentWhiteboard = currentObject.GetComponent<Whiteboard>();
+                    if (currentWhiteboard.StartDrawing(defaultCamera))
                     {
                         SetPlayerMovement(false);
                         standardUI.SetActive(false);
                         drawingUI.SetActive(true);
-                        nonDefaultUI.InitializeDrawingElements(whiteboard);
+                        nonDefaultUI.InitializeDrawingElements(currentWhiteboard);
                         currentAction = readyAction;
                     }
                     break;
@@ -181,14 +193,30 @@ public class PlayerInputManager : NetworkBehaviour
         }
     }
 
+    #endregion
+
+
+    #region Helper Functions
     /// <summary>
-    /// Returns true if any UI that has input text or buttons 
+    /// Returns true if any UI that has input text 
     /// is currently open, to prevent input conflicts.
     /// </summary>
     private bool CheckOtherUI()
     {
-        return notebook.isOpen || chatOpen;
+        return notebook.isOpen || chatOpen || roller.isOracleVisible;
     }
+
+    private void SetPlayerMovement(bool isOn)
+    {
+        if (!isOn) playerController.StopMovement();
+        else playerController.ResumeMovement();
+
+        cameraController.enabled = isOn;
+        playerController.enabled = isOn;
+    }
+
+    #endregion
+
 
     #region Player to Player Actions
 
@@ -220,7 +248,7 @@ public class PlayerInputManager : NetworkBehaviour
 
 
     #region Debug
-    void OnCamera()
+    public void OnCamera()
     {
         if (CheckOtherUI()) return;
 

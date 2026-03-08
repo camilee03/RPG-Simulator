@@ -303,6 +303,7 @@ MonoBehaviour:
     Address: 127.0.0.1
     Port: 7777
     ServerListenAddress: 127.0.0.1
+    ClientBindPort: 0
   DebugSimulator:
     PacketDelayMS: 0
     PacketJitterMS: 0
@@ -349,7 +350,7 @@ MonoBehaviour:
     NetworkProfilingMetrics: 1
     OldPrefabList: []
   RunInBackground: 1
-  LogLevel: 0
+  LogLevel: 2
 --- !u!4 &319069157
 Transform:
   m_ObjectHideFlags: 0
@@ -460,6 +461,7 @@ MonoBehaviour:
   m_VerticalAlignment: 512
   m_textAlignment: 65535
   m_characterSpacing: 20
+  m_characterHorizontalScale: 1
   m_wordSpacing: 0
   m_lineSpacing: 0
   m_lineSpacingMax: 0
@@ -866,7 +868,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5375187111724764857, guid: 1455f60a9a7c8464db64424b4b11ba72, type: 3}
       propertyPath: LogType
-      value: 0
+      value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 6011972172621586986, guid: 1455f60a9a7c8464db64424b4b11ba72, type: 3}
       propertyPath: m_Name

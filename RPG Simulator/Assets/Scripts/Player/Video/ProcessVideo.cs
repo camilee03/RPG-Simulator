@@ -9,7 +9,7 @@ public class ProcessVideo : NetworkBehaviour
 {
     WebCamTexture webCam;
     Renderer rend;
-    [SerializeField] Material playerColor;
+    public Material playerColor;
     bool isInitialized = false;
     bool connecting = false;
 

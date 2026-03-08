@@ -8,7 +8,7 @@ using UnityEngine.UI;
 
 public class VivoxPlayer : NetworkBehaviour
 {
-    PlayerInfo playerInfo;
+    public PlayerInfo playerInfo { get; private set; }
     bool isInitialized = false;
 
     [Header("UI References")]
@@ -19,20 +19,27 @@ public class VivoxPlayer : NetworkBehaviour
 
     [Header("Object References")]
     [SerializeField] NetworkObject playerObject;
+    [SerializeField] ProcessVideo playerMaterial;
+
+    [Header("Debug")]
+    DebugSettings.LogLevel logLevel = DebugSettings.LogLevel.Player;
+    private bool shouldLog;
 
     private void OnEnable() { if (!DebugSettings.Instance.OfflineTesting) Ticker.OnSlowTick += UpdateUI; }
     private void OnDisable() { if (!DebugSettings.Instance.OfflineTesting) Ticker.OnSlowTick -= UpdateUI; }
     public void UpdateUI()
     {
+        shouldLog = DebugSettings.Instance.ShouldLog(logLevel);
+
         if (!isInitialized)
         {
-            Debug.Log("[VivoxPlayer] Player info not initialized for player: " + playerObject.OwnerClientId);
+            if (shouldLog) Debug.Log("[VivoxPlayer] Player info not initialized for player: " + playerObject.OwnerClientId);
             RequestPlayerInfoForOwnerServerRpc(playerObject.OwnerClientId);
         }
 
         if (IsOwner && isInitialized && playerInfo.playerIcon != null) playerIcon.sprite = playerInfo.playerIcon.sprite;
         if (IsOwner || !isInitialized) return;
-        Debug.Log("[VivoxPlayer] Updating UI for player: " + playerObject.OwnerClientId);
+        if (shouldLog) Debug.Log("[VivoxPlayer] Updating UI for player: " + playerObject.OwnerClientId);
 
         playerNameText.text = playerInfo.playerName;
         muteToggle.isOn = false;
@@ -46,11 +53,12 @@ public class VivoxPlayer : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         if (!IsOwner) return;
-        Debug.Log("[VivoxPlayer] Updating player info for player: " + playerObject.OwnerClientId);
+        if (shouldLog) Debug.Log("[VivoxPlayer] Updating player info for player: " + playerObject.OwnerClientId);
 
         PlayerInfo newInfo = LobbyManager.Instance.GetPlayerInfo();
         SetLocalPlayerInfo(newInfo);
         InitializeServerRPC(newInfo);
+        playerMaterial.playerColor.color = newInfo.playerColor;
     }
 
     [ClientRpc]
@@ -99,6 +107,8 @@ public class VivoxPlayer : NetworkBehaviour
     {
         playerInfo = newInfo;
         isInitialized = true;
+
+        playerMaterial.playerColor.color = playerInfo.playerColor;
     }
 
     #endregion
@@ -135,24 +145,30 @@ public class VivoxPlayer : NetworkBehaviour
     #endregion
 }
 
+public enum PlayerType { DM, Player }
+
 public class PlayerInfo : IEquatable<PlayerInfo>, INetworkSerializable
 {
     public string playerName;
+    public PlayerType playerType;
     public string playerID; // vivox ID
     public ulong clientID; // netcode client ID
     public Image playerIcon;
+    public Color playerColor;
 
     bool IEquatable<PlayerInfo>.Equals(PlayerInfo other)
     {
         return other != null &&
             other.clientID == clientID && 
+            other.playerType == playerType &&
             other.playerName == playerName &&
-            other.playerIcon == playerIcon;
+            other.playerIcon == playerIcon &&
+            other.playerColor == playerColor;
     }
 
     public override string ToString()
     {
-        return $"{playerName}:{playerID}:{clientID}";
+        return $"{playerName}:{playerType}:{playerID}:{clientID}:{playerColor}";
     }
 
     public bool IsEmpty()
@@ -164,8 +180,10 @@ public class PlayerInfo : IEquatable<PlayerInfo>, INetworkSerializable
     {
         // serialize primitive fields
         serializer.SerializeValue(ref playerName);
+        serializer.SerializeValue(ref playerType);
         serializer.SerializeValue(ref playerID);
         serializer.SerializeValue(ref clientID);
+        serializer.SerializeValue(ref playerColor);
 
 
         // -- Custom serialization for Image asset via GUID -- //

@@ -79,11 +79,13 @@ public class LobbyManager : MonoBehaviour
         playerInfo = new()
         {
             playerName = "Player",
+            playerType = PlayerType.Player,
             playerID = "",
             clientID = NetworkManager.Singleton.LocalClientId,
             playerIcon = null,
+            playerColor = Color.white,
         };
-        GetSavedName();
+        GetSavedInfo();
 
         playerInfo.playerName = playerName;
         InitializationOptions initializationOptions = new();
@@ -388,12 +390,31 @@ public class LobbyManager : MonoBehaviour
         return null;
     }
 
+    public PlayerInfo[] GetAllPlayerInfo()
+    {
+        VivoxPlayer[] players = FindObjectsByType<VivoxPlayer>(FindObjectsSortMode.None);
+        if (players.Length == 0) return null;
+        PlayerInfo[] playerInfos = new PlayerInfo[players.Length];
+        PlayerInfo localPlayerInfo = GetPlayerInfo();
+
+        int i = 0;
+        foreach (VivoxPlayer player in players)
+        {
+            if (player.playerInfo != null && player.playerInfo.playerID != localPlayerInfo.playerID)
+            {
+                playerInfos[i] = player.playerInfo; i++;
+            }
+        }
+
+        return playerInfos;
+    }
+
     #endregion
 
     #region Player Info
     /// <summary> Changes the player's name in the currently joined lobby. </summary>
     /// <param name="playerName"></param>
-    private async void UpdatePlayerName(string playerName)
+    private async void UpdatePlayerInfo()
     {
         if (joinedLobby != null)
         {
@@ -422,6 +443,8 @@ public class LobbyManager : MonoBehaviour
             {
                 Debug.Log(e);
             }
+
+            SaveInfo();
         }
     }
 
@@ -430,31 +453,55 @@ public class LobbyManager : MonoBehaviour
         return playerInfo.playerName;
     }
 
-    private void GetSavedName()
+    private void GetSavedInfo()
     {
         if (PlayerPrefs.HasKey(KEY_PLAYER_INFO))
         {
             string playerInfoStr = PlayerPrefs.GetString(KEY_PLAYER_INFO);
-            string playerName = playerInfoStr.Split(':')[0];
-            playerInfo.playerName = playerName;
+
+            playerInfo.playerName = playerInfoStr.Split(':')[0];
+            playerInfo.playerType = Enum.Parse<PlayerType>(playerInfoStr.Split(':')[1]);
+            // Already updated
+            // playerInfo.playerID = AuthenticationService.Instance.PlayerId;
+            // playerInfo.clientID = NetworkManager.Singleton.LocalClientId;
+            playerInfo.playerIcon = null;
+            /*
+            playerInfo.playerColor = new Color(
+                float.Parse(playerInfoStr.Split(':')[4]),
+                float.Parse(playerInfoStr.Split(':')[5]),
+                float.Parse(playerInfoStr.Split(':')[6]));
+            */
+            if (shouldLog) Debug.Log("Loaded saved player info: " + playerInfoStr);
         }
     }
 
-    private void SaveName()
+    private void SaveInfo()
     {
         PlayerPrefs.SetString(KEY_PLAYER_INFO, playerInfo.ToString());
     }
 
     public void ChangeName(string newName)
     {
-        UpdatePlayerName(newName);
         playerInfo.playerName = newName;
-        SaveName();
+        UpdatePlayerInfo();
+    }
+
+    public void ChangeColor(Color newColor)
+    {
+        playerInfo.playerColor = newColor;
+        UpdatePlayerInfo();
     }
 
     public async void ChangeProfileImage()
     {
         playerInfo.playerIcon.sprite = await FileBrowserUpdate.Instance.GetSpriteFromImageFileBrowser();
+        UpdatePlayerInfo();
+    }
+
+    public void ChangePlayerType(PlayerType newType)
+    {
+        playerInfo.playerType = newType;
+        UpdatePlayerInfo();
     }
 
     public PlayerInfo GetPlayerInfo()

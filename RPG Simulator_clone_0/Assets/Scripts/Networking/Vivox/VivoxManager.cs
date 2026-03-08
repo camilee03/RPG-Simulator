@@ -402,7 +402,7 @@ public class VivoxManager : MonoBehaviour
             foreach (Player player in players)
             {
                 string playerInfoStr = player?.Data != null && player.Data.ContainsKey(LobbyManager.KEY_PLAYER_INFO) ? player.Data[LobbyManager.KEY_PLAYER_INFO].Value : player?.Id;
-                ulong playerClientID = Convert.ToUInt64(playerInfoStr.Split(':')[2]);
+                ulong playerClientID = Convert.ToUInt64(playerInfoStr.Split(':')[3]);
                 Debug.Log(playerClientID);
                 if (playerClientID == id)
                 {
@@ -429,7 +429,7 @@ public class VivoxManager : MonoBehaviour
             foreach (Player player in players)
             {
                 string playerInfoStr = player?.Data != null && player.Data.ContainsKey(LobbyManager.KEY_PLAYER_INFO) ? player.Data[LobbyManager.KEY_PLAYER_INFO].Value : player?.Id;
-                if (Convert.ToUInt64(playerInfoStr.Split(':')[2]) == clientID)
+                if (Convert.ToUInt64(playerInfoStr.Split(':')[3]) == clientID)
                 {
                     return player.Id;
                 }
@@ -462,29 +462,23 @@ public class VivoxManager : MonoBehaviour
 
     /// <summary>
     /// Send a message that is intended for a single client.
-    /// The message is encoded and sent on the currently joined chat channel. Recipients must parse messages
-    /// with the "/pm:{recipientId}:{message}" prefix to treat them as private.
+    /// The message is encoded and sent on the currently joined chat channel.
     /// </summary>
-    /// <param name="recipientId">Target client/player id.</param>
+    /// <param name="recipientId">Target player id.</param>
     /// <param name="message">Message text to send.</param>
     public async Task SendMessageToClientAsync(string recipientId, string message)
     {
         if (!DebugSettings.Instance.DoVivox) return;
         if (string.IsNullOrEmpty(recipientId) || string.IsNullOrEmpty(message) || joinedChatChannel == null)
         {
+            Debug.Log("EXITING SEND");
             return;
         }
 
-        // Encode recipient into the payload so other clients can route/display appropriately.
-        string payload = $"/pm:{message}";
+        if (shouldLog) Debug.Log($"[VivoxManager] Sending private message to {recipientId} from {AuthenticationService.Instance.PlayerId}: {message}");
 
-        if (shouldLog) Debug.Log($"[VivoxManager] Sending private message to {recipientId}: {message}");
+        await VivoxService.Instance.SendDirectTextMessageAsync(recipientId, message);
 
-        await VivoxService.Instance.SendDirectTextMessageAsync(recipientId, payload);
-
-        if (messageField != null)
-        {
-            messageField.text = string.Empty;
-        }
+        if (messageField != null) messageField.text = string.Empty;
     }
 }

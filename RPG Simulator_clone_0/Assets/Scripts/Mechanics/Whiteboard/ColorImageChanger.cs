@@ -21,8 +21,6 @@ public class ColorImageChanger : MonoBehaviour, IDragHandler, IPointerClickHandl
 
     private void UpdateColor(PointerEventData eventData)
     {
-        Debug.Log($"Cursor position: {eventData.position}");
-
         Vector3 pos = rectTransform.InverseTransformPoint(eventData.position);
 
         float deltaX = rectTransform.sizeDelta.x * 0.5f;

@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using Unity.Netcode;
 using Unity.Netcode.Components;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.UI;
 
 public class FirstPersonMovement : NetworkBehaviour
 {
@@ -89,7 +91,6 @@ public class FirstPersonMovement : NetworkBehaviour
         if (!IsOwner) return;
         if (IsHost) MoveTo(new Vector3(-3, 2, -3));
         else MoveTo(new Vector3(-6, 2, -3));
-
     }
 
     public void ResetInputSystem(NetworkManager manager, ConnectionEventData eventData)
@@ -102,7 +103,15 @@ public class FirstPersonMovement : NetworkBehaviour
         InputSystem.actions.Disable();
         playerInput.currentActionMap?.Enable();
 
-        if (IsOwner || DebugSettings.Instance.OfflineTesting) playerInput.actions = InputSystem.actions;
+        if (IsOwner || DebugSettings.Instance.OfflineTesting)
+        {
+            //BaseInputModule inputModule = EventSystem.current.currentInputModule;
+            //InputSystemUIInputModule uIInputModule = inputModule as InputSystemUIInputModule;
+
+            //playerInput.uiInputModule = uIInputModule;
+
+            playerInput.actions = InputSystem.actions;
+        }
 
         playerInput.enabled = false;
 

@@ -149,6 +149,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Oracle",
+                    "type": "Button",
+                    "id": "7138f40d-07ad-44f9-b79b-1731dee85067",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -589,6 +598,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "Chat",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "3fc52324-8eaa-4fb1-a5c7-b01f109ca6ae",
+                    "path": "<Keyboard>/o",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Oracle",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }
